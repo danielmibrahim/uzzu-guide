@@ -9,7 +9,7 @@ Usage: UZZU_URL=https://uzzu.tv/hls/<your id> python3 make_guide.py out.xml.gz
 The output contains only channel names and listings, never the playlist URL or account id.
 """
 import gzip, json, os, re, sys, urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from xml.sax.saxutils import escape, quoteattr
 
 UA = {"User-Agent": "TiviMate/5.3.3"}
@@ -37,7 +37,9 @@ def main():
             seen.add(tid)
             channels[num.group(1)] = (tid, info.rsplit(",", 1)[-1].strip())
 
-    guide = json.loads(fetch(base + "/epg"))["data"]
+    # Uzzu sends 24h by default; asking for 48h (all it has) gives TiviMate a day of slack between updates
+    until = (datetime.now(timezone.utc) + timedelta(hours=48)).strftime("%Y-%m-%dT%H:00:00%%2B00:00")
+    guide = json.loads(fetch(f"{base}/epg?to={until}"))["data"] or {}
     lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<tv generator-info-name="uzzu-guide">']
     used = [n for n in guide if n in channels]
     for n in used:
