@@ -1,0 +1,28 @@
+name: Update guide
+# Rebuilds uzzu.xml.gz every 3 hours and force-pushes it to the "guide" branch (one commit, no history
+# pile-up). TiviMate EPG URL: https://raw.githubusercontent.com/<user>/<repo>/guide/uzzu.xml.gz
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build guide
+        env:
+          UZZU_URL: ${{ secrets.UZZU_URL }}
+        run: python3 make_guide.py /tmp/uzzu.xml.gz
+      - name: Publish to the guide branch
+        run: |
+          mkdir /tmp/out && cd /tmp/out && cp /tmp/uzzu.xml.gz .
+          git init -q -b guide
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add uzzu.xml.gz && git commit -qm "Guide $(date -u +%FT%RZ)"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" guide
